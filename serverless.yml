@@ -1,0 +1,115 @@
+service: odin-soat
+
+provider:
+  name: aws
+  runtime: python3.7
+  region: us-east-1
+  stage: ${file(.env.yml):ENVIRONMENT}
+  profile: ${file(.env.yml):PROFILE}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - lambda:Invoke*
+      Resource: "*"
+custom:
+  pythonRequirements:
+    fileName: ${self:custom.stageEnv.PYTHON_REQUIREMENTS}
+    dockerizePip: False
+    slim: true
+    slimPatterns:
+      - "*.dist-info"
+  stageEnv: ${file(.env.yml):${self:provider.stage}}
+
+package:
+  exclude:
+    - ./**
+  include:
+    - api/**
+    - mobile_insurance/**
+    - handler.py
+
+functions:
+  main:
+    handler: handler.main
+    timeout: 90
+    memorySize: 512
+    layers:
+      - arn:aws:lambda:us-east-1:484591635704:layer:libraryalice:latest
+      - arn:aws:lambda:us-east-1:484591635704:layer:librarycerberus:latest
+      - arn:aws:lambda:us-east-1:484591635704:layer:libraryiris:latest
+    environment:
+      AUTOBOT_ENDPOINT: ${self:custom.stageEnv.AUTOBOT_ENDPOINT}
+      AUTOBOT_SQS_QUEUE: ${self:custom.stageEnv.AUTOBOT_SQS_QUEUE}
+      APP_ENVIRONMENT: ${self:custom.stageEnv.APP_ENVIRONMENT}
+      AWS_F1_REGION: ${self:provider.region}
+      CERBERUS_DB_HOST: ${self:custom.stageEnv.CERBERUS_DB_HOST}
+      CERBERUS_DB_PORT: ${self:custom.stageEnv.CERBERUS_DB_PORT}
+      CERBERUS_DB_NAME: ${self:custom.stageEnv.CERBERUS_DB_NAME}
+      CERBERUS_DB_PASSWORD: ${self:custom.stageEnv.CERBERUS_DB_PASSWORD}
+      CERBERUS_DB_USER: ${self:custom.stageEnv.CERBERUS_DB_USER}
+      CERBERUS_TOKEN_EXPIRATION_MINUTES_DELTA: ${self:custom.stageEnv.CERBERUS_TOKEN_EXPIRATION_MINUTES_DELTA}
+      OTP_TOKEN_EXPIRATION_MINUTES_DELTA: ${self:custom.stageEnv.OTP_TOKEN_EXPIRATION_MINUTES_DELTA}
+      DYNAMO_APPLICATION_TABLE: ${self:custom.stageEnv.DYNAMO_APPLICATION_TABLE}
+      DYNAMO_FUNNEL_TABLE: ${self:custom.stageEnv.DYNAMO_FUNNEL_TABLE}
+      DYNAMO_HOST: ${self:custom.stageEnv.DYNAMO_HOST}
+      DYNAMO_RATE_TABLE: ${self:custom.stageEnv.DYNAMO_RATE_TABLE}
+      EXPERIAN_URL: ${self:custom.stageEnv.EXPERIAN_URL}
+      GRAYLOG_HOST: ${self:custom.stageEnv.GRAYLOG_HOST}
+      GRAYLOG_PORT: ${self:custom.stageEnv.GRAYLOG_PORT}
+      NIMBUS_ENDPOINT: ${self:custom.stageEnv.NIMBUS_ENDPOINT}
+      IRONHIDE_LAMBDA: ${self:custom.stageEnv.IRONHIDE_LAMBDA}
+      ODIN_ID: ${self:custom.stageEnv.ODIN_ID}
+      ODIN_USER: ${self:custom.stageEnv.ODIN_USER}
+      MAX_SCORE: ${self:custom.stageEnv.MAX_SCORE}
+      MIN_SCORE: ${self:custom.stageEnv.MIN_SCORE}
+      MIN_DEB_PERCENTAGE: ${self:custom.stageEnv.MIN_DEB_PERCENTAGE}
+      MAX_DEB_PERCENTAGE: ${self:custom.stageEnv.MAX_DEB_PERCENTAGE}
+      PUSHER_APP_ID: ${self:custom.stageEnv.PUSHER_APP_ID}
+      PUSHER_KEY: ${self:custom.stageEnv.PUSHER_KEY}
+      PUSHER_SECRET: ${self:custom.stageEnv.PUSHER_SECRET}
+      PUSHER_CLUSTER: ${self:custom.stageEnv.PUSHER_CLUSTER}
+      RABBIT_HOST: ${self:custom.stageEnv.RABBIT_HOST}
+      RABBIT_PASSWORD: ${self:custom.stageEnv.RABBIT_PASSWORD}
+      RABBIT_USER: ${self:custom.stageEnv.RABBIT_USER}
+      SECRET_CAPTCHA: ${self:custom.stageEnv.SECRET_CAPTCHA}
+      SECRET_KEY: ${self:custom.stageEnv.SECRET_KEY}
+      SENTRY_SDK: ${self:custom.stageEnv.SENTRY_SDK}
+      SQS_APPLICATION_NAME: ${self:custom.stageEnv.SQS_APPLICATION_NAME}
+    events:
+      - http:
+          path: api
+          method: post
+          cors: true
+    vpc:
+      securityGroupIds:
+        - sg-01616c9e3ca0c4cd1
+        - sg-0f2af6bef5873842a
+        - sg-0fa01b759e9eaf830
+      subnetIds:
+        - subnet-00c1337580b11cf75
+        - subnet-052a607bb33d9b0ff
+        - subnet-0b06e306e0e682b8b
+        - subnet-0e0958161a53a4aaf
+
+  captcha:
+    handler: captcha.main
+    timeout: 20
+    memorySize: 128
+    environment:
+      APP_ENVIRONMENT: ${self:custom.stageEnv.APP_ENVIRONMENT}
+      SECRET_KEY: ${self:custom.stageEnv.SECRET_KEY}
+      SECRET_CAPTCHA: ${self:custom.stageEnv.SECRET_CAPTCHA}
+      GRAYLOG_HOST: ${self:custom.stageEnv.GRAYLOG_HOST}
+      SENTRY_SDK: ${self:custom.stageEnv.SENTRY_SDK}
+    layers:
+      - arn:aws:lambda:us-east-1:484591635704:layer:libraryalice:latest
+    events:
+      - http:
+          path: captcha
+          method: post
+          cors: true
+
+plugins:
+  - serverless-python-requirements
+  - serverless-offline
+  - serverless-latest-layer-version
